@@ -15,6 +15,9 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes[0].set_title('frame_1')
         self.axes[1].set_title('frame_2')
         self.axes[2].set_title('frame_1 - frame_2')
+        for a in self.axes:
+            a.axis([-0.5, 1474.5, 194.5, -0.5])
+            a.set_aspect('equal')
         fig.set_tight_layout(True)
         super(MplCanvas, self).__init__(fig)
 
