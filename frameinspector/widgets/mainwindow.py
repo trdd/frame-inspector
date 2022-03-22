@@ -4,6 +4,7 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 import fabio
 import matplotlib
+import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvasQTAgg,
     NavigationToolbar2QT as NavigationToolbar,
@@ -11,6 +12,8 @@ from matplotlib.backends.backend_qt5agg import (
 import numpy as np
 
 from .MplWidget import MplCanvas
+from ..models.imagestack import imageStack
+
 matplotlib.use('Qt5Agg')
 
 
@@ -67,9 +70,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.le_clim_min = QtWidgets.QLineEdit("0")
         self.le_clim_min.setValidator(QtGui.QIntValidator())
         self.le_top  = QtWidgets.QLineEdit("")
+        self.le_top.setDragEnabled(True)
         self.le_bottom  = QtWidgets.QLineEdit("")
-        self.btn_top = QtWidgets.QPushButton('set')
-        self.btn_bottom = QtWidgets.QPushButton('set')
+        self.le_bottom.setDragEnabled(True)
+        self.btn_top = QtWidgets.QPushButton('open')
+        self.btn_bottom = QtWidgets.QPushButton('open')
         self.configGroupBox = QtWidgets.QGroupBox("settings")
         layout = QtWidgets.QGridLayout()
         layout.addWidget(QtWidgets.QLabel("cmin"), 0, 0, 1, 1)
@@ -96,45 +101,26 @@ class MainWindow(QtWidgets.QMainWindow):
     def updateImg(self):
         sender = self.sender()
         if sender== self.le_top:
-            self.imgstack_top.load(self.le_top.text())
+            self.imgstack_top.load(self.le_top.text().strip())
             self.sc.axes[0].imshow(self.imgstack_top.get_sum())
         elif sender== self.le_bottom:
-            self.imgstack_bottom.load(self.le_bottom.text())
+            self.imgstack_bottom.load(self.le_bottom.text().strip())
             self.sc.axes[1].imshow(self.imgstack_bottom.get_sum())
         if (len(self.imgstack_top.fns) > 0) and (len(self.imgstack_bottom.fns) > 0):
             difference = self.imgstack_top.get_sum() - self.imgstack_bottom.get_sum()
-            self.sc.axes[2].imshow(difference)
+            self.sc.axes[2].imshow(difference, cmap=plt.cm.seismic_r)
         self.updateClim()
         self.sc.draw()
     def updateClim(self):
-        for a in self.sc.axes:
+        for a in self.sc.axes[:2]:
             if len(a.images) > 0:
                 a.images[-1].set_clim(int(self.le_clim_min.text()),
                         int(self.le_clim_max.text()))
+        if len(self.sc.axes[2].images) > 0:
+            self.sc.axes[2].images[-1].set_clim(-int(self.le_clim_max.text()),
+                    int(self.le_clim_max.text()))
         self.sc.draw()
 
-class imageStack(object):
-    def __init__(self):
-        self.fns = []
-    def load(self, fnp):
-        fns = glob.glob(fnp)
-        if len(fns) > 0:
-            fns.sort()
-            self.fns = fns
-            myshape = fabio.open(self.fns[0]).data.shape
-            dat = []
-            for f in fns:
-                _ = fabio.open(f).data
-                if _.shape == myshape:
-                    dat.append(_)
-                else:
-                    print("skipping {} because it has different shape!".format(f))
-            self.dat = np.stack(dat)
-    def get_sum(self):
-        if len(self.fns) > 0:
-            return self.dat.sum(axis=0)
-        else:
-            return None
 
 
 
